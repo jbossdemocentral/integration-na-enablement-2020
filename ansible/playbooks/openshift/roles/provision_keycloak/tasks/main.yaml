@@ -1,0 +1,17 @@
+---
+- name: Evaluate user{{ item }} namespace if not exists 
+  k8s:
+    api_version: v1
+    kind: Namespace
+    name: 'user{{ item }}'
+    state: present
+
+- name: Evaluate infinispan Operator Group
+  k8s:
+    state: present
+    resource_definition: "{{ lookup('template', 'keycloak-operatorgroup.yaml.j2') }}"
+
+- name: Evaluate infinispan Subscription
+  k8s:
+    state: present
+    resource_definition: "{{ lookup('template', 'keycloak-subscription.yaml.j2') }}"

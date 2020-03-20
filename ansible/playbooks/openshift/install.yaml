@@ -1,0 +1,41 @@
+---
+- name: "NA enablement"
+  hosts: workshop
+  become: false
+  gather_facts: false
+  tags:
+    - install
+  tasks:
+    - name: Check if desired virtualenv is available on the host
+      stat:
+        path: "/opt/virtualenvs/k8s/bin/python"
+      register: r_virtualenv
+    - name: Set Ansible Python interpreter to virtualenv
+      when: r_virtualenv.stat.exists
+      set_fact:
+        ansible_python_interpreter: "/opt/virtualenvs/k8s/bin/python"
+    - include_role:
+        name: provision_camelk
+      vars:
+        operators_project: "workshop-operators"
+      tags: provision_camelk
+    - include_role:
+        name: provision_streams
+      vars:
+        operators_project: "workshop-operators"
+      tags: provision_streams
+    - include_role:
+        name: user_projects
+      with_sequence: start=1 end={{ usersno }} format=%d
+      tags: user_projects
+    - include_role:
+        name: provision_keycloak
+      vars:
+        che_project: "keycloak"
+      with_sequence: start=1 end={{ usersno }} format=%d
+      tags: provision_keycloak
+    - include_role:
+        name: provision_che
+      vars:
+        che_project: "che"
+      tags: provision_che

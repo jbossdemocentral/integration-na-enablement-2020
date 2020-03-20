@@ -1,0 +1,29 @@
+---
+- name: Process user namespace
+  k8s:
+    api_version: v1
+    kind: Namespace
+    name: 'user{{ item }}'
+    state: present
+
+- name: Process user che namespace
+  k8s:
+    api_version: v1
+    kind: Namespace
+    name: 'user{{ item }}-che'
+    state: present
+  
+- name: Give user{{ item }} access to projects
+  k8s:
+    state: present
+    resource_definition: "{{ lookup('template', 'user-rolebinding.yaml.j2') }}"
+  loop:
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}', role: 'admin' }
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-che', role: 'admin' }
+  loop_control:
+    loop_var: item_project
+
+- name: Create Camel Integration Platform for Each User project
+  k8s:
+    state: present
+    resource_definition: "{{ lookup('template', 'camel_integration_platform.yaml.j2') }}"
