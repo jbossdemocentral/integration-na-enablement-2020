@@ -86,8 +86,10 @@ apiVersion: kafka.strimzi.io/v1beta1
 kind: KafkaConnect
 metadata:
   name: debezium
+  annotations:
+    strimzi.io/use-connector-resources: "true"
 spec:
-  bootstrapServers: 'earth-cluster-kafka-bootstrap.shared-kafka-earth.svc:9092'
+  bootstrapServers: 'user-cluster-kafka-bootstrap:9092'
   image: 'quay.io/hguerreroo/debezium-connect:0.10.0-sqlsrv'
   replicas: 1
   jvmOptions:
@@ -105,67 +107,52 @@ image::images/openshift-kafkaconnect-detail.png[OpenShift Kafka Resource, role="
 
 === Configure KafkaConnect CDC Connector
 
-. Go back to the CodeReady IDE and expose the Kafka Connect REST API by running this command on the *Terminal* window.
-+
-[source,bash,subs="attributes+"]
-----
-oc expose service debezium-connect-api --name kafka-connect -n {user-username}
-----
-+
-[IMPORTANT]
-====
-Remember to be logged into OpenShift and be in the correct _working_ project.
-====
+You are now in the AMQ Streams operator page where you can check the different resources available from the operator.
 
-. Go back to the OpenShift developer console and open the topology view by clicking *Topology* in the left side menu
-+
-image:images/openshift-kafkaconnect-resource.png[Back To Topology]
+. Click again in the *KafkaTopic* tab.
+// +
+// image::images/openshift-kafkaconnect-detail.png[OpenShift Kafka Resource, role="integr8ly-img-responsive"]
 
-. Wait for the default deployment to finish and deploy the required pod. Remember to wait for the dark blue circles.
-+
-image:images/topology-kafkaconnect.png[KakfaConnect Topology]
+. You should see the _topics_ created by *Debezium*.
 
-. Check that everything deployed correctly by clicking the *Open URL* icon.
+. Now click on the *Kafka connector* tab. With AMQ Streams we can also configure the Kafka Connect connectors using Kubernetes custom resources.
 
-. You should be able to see the information of the Kafka cluster version like the following:
+. Click on the *Create Kafka Connector* button.
+
+. Replace the contents of the YAML editor with the following code:
 +
-[source,json,subs="attributes+"]
+[source,yaml,subs="attributes+"]
 ----
-{"version":"2.2.1.redhat-00002","commit":"c330425647372ca2","kafka_cluster_id":"g0lUt2NARWSPxFn1Aq3uTw"}
-----
-
-. Now that we know that the Kafka Connect cluster is running, let's create a new connector config to react to changes in the `Orders` table. Issue the following command in the CodeReady Terminal window:
-+
-[source,bash,subs="attributes+"]
-----
-cat << EOF | curl -X POST -H "Accept:application/json" -H "Content-Type:application/json" http://kafka-connect-{user-username}.{openshift-app-host}/connectors -d @-
-{
-  "name": "orders-connector",
-  "config": {
-    "connector.class": "io.debezium.connector.sqlserver.SqlServerConnector",
-    "database.hostname": "mssql-server-linux.shared-db-earth.svc",
-    "database.port": "1433",
-    "database.user": "sa",
-    "database.password": "Password!",
-    "database.dbname": "InternationalDB",
-    "database.server.name": "{user-username}.earth",
-    "table.whitelist": "dbo.Orders",
-    "database.history.kafka.bootstrap.servers": "earth-cluster-kafka-bootstrap.shared-kafka-earth.svc:9092",
-    "database.history.kafka.topic": "{user-username}.earth.dbhistory"
-  }
-}
-EOF
+apiVersion: kafka.strimzi.io/v1alpha1
+kind: KafkaConnector
+metadata:
+  name: orders-connector
+  labels:
+    strimzi.io/cluster: user-cluster
+spec:
+  class: io.debezium.connector.sqlserver.SqlServerConnector
+  tasksMax: 1
+  config:
+    connector.class: "io.debezium.connector.sqlserver.SqlServerConnector"
+    database.hostname: "mssql-server-linux.{user-username}.svc"
+    database.port: "1433"
+    database.user: "sa"
+    database.password: "Password!"
+    database.dbname: "InternationalDB"
+    database.server.name: "{user-username}.db"
+    table.whitelist: "dbo.Orders"
+    database.history.kafka.bootstrap.servers: "user-cluster-kafka-bootstrap:9092"
+    database.history.kafka.topic: "{user-username}.db.dbhistory"
 ----
 
-. If the last command was successful. you should get the following output as return:
-+
-[source,json,subs="attributes+"]
-----
-{"name":"orders-connector","config":{"connector.class":"io.debezium.connector.sqlserver.SqlServerConnector","database.hostname":"mssql-server-linux.shared-db-earth.svc","database.port":"1433","database.user":"sa","database.password":"Password!","database.dbname":"InternationalDB","database.server.name":"{user-username}.earth","table.whitelist":"dbo.Orders","database.history.kafka.bootstrap.servers":"earth-cluster-kafka-bootstrap.shared-kafka-earth.svc:9092","database.history.kafka.topic":"{user-username}.earth.dbhistory","name":"orders-connector"},"tasks":[],"type":"source"}
-----
+. Then click the *Create* button to submit the configuration.
+
+. In the operator page, change to the *Kafka Topic* back again. You should see now the `user1.db.dbhistory` _topic_ being created.
+
+. Get back to the Topology view and check the log in the *debezium-cluster* deployment. 
 
 [type=verification]
-Did you receive the orders-connector response from the SqlServerConnector?
+Did the connector started correctly and is now reading the database transaction log?
 [type=verificationFail]
 Verify that you followed each step in the procedure above. If you are still having issues, contact your administrator.
 
@@ -184,7 +171,7 @@ Let's get started!
 
 . Download to your local system the link:https://raw.githubusercontent.com/RedHatWorkshops/dayinthelife-streaming/master/support/module-1/earth-orders.csv[Earth Orders File, window="_blank"].
 
-. Navigate to the legacy PHP link:http://www-shared-app-earth.{openshift-app-host}/#{user-username}[Enterprise System, window="_blank"] in a new browser tab.
+. Navigate to the legacy PHP link:http://www-{user-username}.{openshift-app-host}/#{user-username}[Enterprise System, window="_blank"] in a new browser tab.
 +
 [IMPORTANT]
 ====
@@ -211,11 +198,9 @@ image::images/www-imported-orders.png[Imported Orders]
 
 === Check Database Records
 
-After loading the file into the system, the orders data  should be storee in the MSSQL Server database. Let's check to make sure that's the case.
+After loading the file into the system, the orders data  should be store in the MSSQL Server database. Let's check to make sure that's the case.
 
-. Go back to the topology view of the OpenShift Developer console. Change the project to the `shared-db-earth`.
-+
-image:images/openshift-change-project.png[Change Project]
+. Go back to the topology view of the OpenShift Developer console.
 
 . Click on the database deployment to open the overview page. Then click on the *Resources* tab and next the _Pod_ name.
 +
@@ -245,18 +230,21 @@ image::images/openshift-sqlcommand.png[Query]
 
 We checked that the database had the _orders_ data. Is now time to check that the Change Data Capture connector was able to query the transaction log and generate the Apache Kafka events to the cluster.
 
-. Go back to the topology view of the OpenShift Developer console. Change the project to the `shared-kafka-earth`.
-+
-image:images/openshift-project-sharedkafka.png[Change Project]
-
 . Validate that the *KafkaTopics* were created.
 +
+--
 - Expand the *Advanced* menu on the left menu bar.
 - Click on *Search* to load the _resources_ search page.
 - Click on the _Resource Type_ field and type 'topic'.
 - Finally select *KafkaTopic*.
-+
+
 image::images/openshift-search-kafkatopics.png[Search KafkaTopics]
+
+[TIP]
+====
+This an alternative way to search for resources in the OpenShift developer console.
+====
+--
 
 . This will display the topics on the *Earth* _Kafka cluster_. You should be able to locate your `{user-username}-connect-cluster*` as well as the `{user-username}.earth.dbo.orders--*` _KafkaTopics_.
 +
@@ -279,11 +267,11 @@ Time to check what information is flowing into Apache Kafka.
 
 . Go back to the topology view. We will access one of the Kafka brokers.
 
-. Click on the `earth-cluster kafka` _stateful set_.
+. Click on the `user-cluster kafka` _stateful set_.
 
 . Click on the *Resources* tab.
 
-. Click on the `earth-cluster-kafka-0` pod to access the details.
+. Click on the `user-cluster-kafka-0` pod to access the details.
 +
 image::images/openshift-kafka-deployment.png[Kafka Pods]
 
@@ -300,7 +288,7 @@ Red Hat provides its own complete Apache Kakfa distribution container images. We
 +
 [source,bash,subs="attributes+"]
 ----
-bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic {user-username}.earth.dbo.Orders --from-beginning
+bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic {user-username}.db.dbo.Orders --from-beginning
 ----
 
 . You should see the json output of the messages. Something like this:
@@ -313,173 +301,6 @@ bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic {user-us
 
 [type=verification]
 Were you able to capture the changes in the MSSQL server database and generate Apache Kafka events using Change Data Capture?
-
-[type=verificationFail]
-Verify that you followed each step in the procedure above. If you are still having issues, contact your administrator.
-
-[time=5]
-[id="deploying-apache-kafka"]
-== Deploying Apache Kafka on OpenShift
-
-The AMQ Streams component uses powerful operators that simplify the deployment, configuration, management, and use of Apache Kafka on Red Hat OpenShift® Container Platform.
-
-In this section you will learn how to start a local Kafka cluster that will represent the startup _Moon_ deployment.
-
-. Go back to the OpenShift Developer console.
-
-. Change back to the `{user-username}` project and click on *+Add* menu on the left side bar.
-+
-image:images/openshift-kafka-add.png[Add From Topology]
-+
-[IMPORTANT]
-====
-Be sure to switch back to your working `{user-username}` project
-====
-
-. Click on the *From Catalog* option.
-+
-image::images/add-from-catalog.png[OpenShift From Catalog, role="integr8ly-img-responsive"]
-
-. Type in `kakfa` in the search text field and then click on *Kafka*.
-+
-image::images/openshift-catalog-kafka.png[OpenShift Kafka, role="integr8ly-img-responsive"]
-
-. Click on *Create* button.
-+
-image::images/openshift-create-kafka.png[OpenShift Kafka, role="integr8ly-img-responsive"]
-
-. Create a `Kafka` Kubernetes Resource to define your Apache Kafka Cluster. Replace the _YAML_ editor with the following code:
-+
-[source,yaml,subs="attributes+"]
-----
-apiVersion: kafka.strimzi.io/v1beta1
-kind: Kafka
-metadata:
-  name: moon
-spec:
-  entityOperator:
-    topicOperator: {}
-    userOperator: {}
-  kafka:
-    listeners:
-      external:
-        type: route
-      plain: {}
-      tls: {}
-    replicas: 3
-    storage:
-      type: ephemeral
-  zookeeper:
-    replicas: 3
-    storage:
-      type: ephemeral
-----
-
-. Click on *Create* button.
-+
-image::images/openshift-kafka-resource.png[OpenShift Kafka Resource, role="integr8ly-img-responsive"]
-
-. Go back to the topology view by clicking *Topology* in the left side menu
-+
-image:images/openshift-kafkas-list.png[Back To Topology]
-
-. Wait for cluster to start it can take a few minutes as the operator will deploy your Kafka cluster infrastructure and related operators to manage it.
-+
-image:images/openshift-kafka-topology.png[Kakfa Topology]
-
-[type=verification]
-Did all 3 Kafka resources (Kafka brokers, Zookeeper and Operator) startup OK?
-
-[type=verificationFail]
-Verify that you followed each step in the procedure above. If you are still having issues, contact your administrator.
-
-[time=10]
-[id="replicating-to-other-kafka-clusters"]
-== Replicating to other Kafka clusters
-
-We refer to the process of replicating data between Kafka clusters "mirroring" to avoid confusion with the replication that happens amongst the nodes in a single cluster. Kafka comes with a tool for mirroring data between Kafka clusters.
-
-The Cluster Operator deploys one or more Kafka Mirror Maker replicas to replicate data between Kafka clusters. The Mirror Maker consumes messages from the source cluster and republishes those messages to the target cluster. A common use case for this kind of mirroring is to provide a replica in another datacenter.
-
-=== Deploy Mirror Maker
-
-. Deploy the mirror maker cluster to _mirror_ the data from _Earth_ to _Moon_. (We do mean from the Earth Kafka cluster to the Moon Kakfa cluster)
-
-. Go back to the OpenShift Developer console and click on *+Add* menu on the left side bar.
-+
-image:images/openshift-mirrormaker-add.png[Add From Topology]
-
-. Click on the *From Catalog* option.
-+
-image::images/add-from-catalog.png[OpenShift From Catalog, role="integr8ly-img-responsive"]
-
-. Type in `mirror` in the search text field and then click on *Kafka MirrorMaker*.
-+
-image::images/openshift-mirrormaker-catalog.png[OpenShift Mirror Maker, role="integr8ly-img-responsive"]
-
-. Click on *Create* button.
-+
-image::images/openshift-mirrormaker-create.png[OpenShift Mirror Maker, role="integr8ly-img-responsive"]
-
-. Create a `KafkaMirrorMaker` Kubernetes Resource to define your Mirror Maker Cluster. Replace the _YAML_ editor with the following code:
-+
-[source,yaml,subs="attributes+"]
-----
-apiVersion: kafka.strimzi.io/v1beta1
-kind: KafkaMirrorMaker
-metadata:
-  name: earth-moon
-spec:
-  replicas: 1
-  consumer:
-    bootstrapServers: 'earth-cluster-kafka-bootstrap.shared-kafka-earth.svc:9092'
-    groupId: mirror-maker-{user-username}
-    config:
-      auto.offset.reset: earliest
-  producer:
-    bootstrapServers: 'moon-kafka-bootstrap.{user-username}.svc:9092'
-  whitelist: {user-username}.earth.*
-----
-
-. Click on *Create* button.
-+
-image::images/openshift-mirromaker-detail.png[OpenShift Kafka Resource, role="integr8ly-img-responsive"]
-
-. Go back to the topology view by clicking *Topology* in the left side menu
-+
-image:images/openshift-mirrormakers-list.png[Back To Topology]
-
-. Wait for cluster to start.  It can take a few minutes as the operator will deploy your Kafka cluster infrastructure and related operators to manage it.
-+
-image:images/openshift-mirrormaker-topology.png[Mirror Maker Topology]
-
-=== Review Mirrored Records
-
-. Validate that the *KafkaTopics* were created.
-+
---
-. Expand the *Advanced* menu on the left menu bar.
-
-. Click on *Search* to load the _resources_ search page.
-
-. Click on the _Resource Type_ field and type 'topic'.
-
-. Finally select *KafkaTopic*.
---
-+
-image::images/openshift-moon-kafkatopics.png[Search KafkaTopics]
-
-. This will display the topics on the *Moon* _Kafka cluster_. You should be able to locate your `{user-username}.earth.dbo.orders--*` _KafkaTopic_.
-+
-image::images/openshift-moon-topics.png[CDC KafkaTopics]
-+
-[NOTE]
-====
-This time there is no need to filter the topics, as this _moon_ cluster is only yours.
-====
-
-[type=verification]
-Were you able to verify the Kafka Topic?  Good, this means that Mirror Maker was able to mirror the data from the _earth_ cluster to the *Moon*.
 
 [type=verificationFail]
 Verify that you followed each step in the procedure above. If you are still having issues, contact your administrator.

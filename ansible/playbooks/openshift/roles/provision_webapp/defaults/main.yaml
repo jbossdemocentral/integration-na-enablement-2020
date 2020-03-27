@@ -8,4 +8,4 @@ webapp_operator_resource_items:
   - crd.yaml
   - operator.yaml
 webapp_walkthrough_locations:
-  - 'https://github.com/RedHatWorkshops/dayinthelife-streaming.git?walkthroughsFolder=/docs/labs/'
+  - 'https://github.com/jbossdemocentral/integration-na-enablement-2020.git?walkthroughsFolder=/docs/labs/'

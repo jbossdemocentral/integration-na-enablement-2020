@@ -35,31 +35,24 @@
         operators_project: "workshop-operators"
       tags: provision_streams
     - include_role:
-        name: provision_shared
-      vars:
-        db_earth_namespace: "shared-db"
-        kafka_earth_namespace: "shared-kafka"
-        app_earth_namespace: "shared-app"
-      tags: provision_shared
-    - include_role:
         name: user_projects
       with_sequence: start=1 end={{ num_users }} format=%d
-      vars:
-        db_earth_namespace: "shared-db"
-        kafka_earth_namespace: "shared-kafka"
-        app_earth_namespace: "shared-app"
       tags: user_projects
+    - include_role:
+        name: provision_shared
+      with_sequence: start=1 end={{ num_users }} format=%d
+      tags: provision_workload
     - include_role:
         name: provision_teiid
       vars:
         teiid_project: "teiid"
-      with_sequence: start=1 end={{ usersno }} format=%d
+      with_sequence: start=1 end={{ num_users }} format=%d
       tags: provision_teiid
     - include_role:
         name: provision_postgres
       vars:
         postgres_project: "postgres"
-      with_sequence: start=1 end={{ usersno }} format=%d
+      with_sequence: start=1 end={{ num_users }} format=%d
       tags: provision_postgres
     - include_role:
         name: provision_keycloak
