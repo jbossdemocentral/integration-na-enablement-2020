@@ -13,6 +13,7 @@
     name: 'user{{ item }}-che'
     state: present
   
+  
 - name: Give user{{ item }} access to projects
   k8s:
     state: present
@@ -22,3 +23,9 @@
     - { user: 'user{{ item }}', namespace: 'user{{ item }}-che', role: 'admin' }
   loop_control:
     loop_var: item_project
+
+- name: Evaluate user{{ item }} Operator Group
+  k8s:
+    state: present
+    resource_definition: "{{ lookup('template', 'user-operatorgroup.yaml.j2') }}"
+
