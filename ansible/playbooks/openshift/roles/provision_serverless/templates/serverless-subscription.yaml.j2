@@ -1,11 +1,11 @@
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: camel-k
+  name: serverless-operator
   namespace: {{ operators_project }}
 spec:
-  channel: alpha
+  channel: techpreview
   installPlanApproval: Automatic
-  name: camel-k
-  source: community-operators
+  name: serverless-operator
+  source: redhat-operators
   sourceNamespace: openshift-marketplace
