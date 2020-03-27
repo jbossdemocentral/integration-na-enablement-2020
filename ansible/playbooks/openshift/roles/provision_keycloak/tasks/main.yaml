@@ -5,7 +5,6 @@
     kind: Namespace
     name: 'user{{ item }}'
     state: present
-
 - name: Evaluate infinispan Operator Group
   k8s:
     state: present

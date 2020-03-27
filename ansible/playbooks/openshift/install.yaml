@@ -34,8 +34,8 @@
         che_project: "keycloak"
       with_sequence: start=1 end={{ usersno }} format=%d
       tags: provision_keycloak
-    - include_role:
-        name: provision_che
-      vars:
-        che_project: "che"
-      tags: provision_che
+#    - include_role:
+#        name: provision_che
+#      vars:
+#        che_project: "che"
+#      tags: provision_che

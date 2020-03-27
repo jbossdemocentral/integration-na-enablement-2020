@@ -22,8 +22,3 @@
     - { user: 'user{{ item }}', namespace: 'user{{ item }}-che', role: 'admin' }
   loop_control:
     loop_var: item_project
-
-- name: Create Camel Integration Platform for Each User project
-  k8s:
-    state: present
-    resource_definition: "{{ lookup('template', 'camel_integration_platform.yaml.j2') }}"
