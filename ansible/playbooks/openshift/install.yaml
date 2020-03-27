@@ -1,6 +1,6 @@
 ---
 - name: "NA enablement"
-  hosts: workshop
+  hosts: localhost
   become: false
   gather_facts: false
   tags:
@@ -19,6 +19,16 @@
       vars:
         operators_project: "workshop-operators"
       tags: provision_camelk
+    - include_role:
+        name: provision_serverless
+      vars:
+        operators_project: "workshop-operators"
+      tags: provision_serverless
+    - include_role:
+        name: provision_eventing
+      vars:
+        operators_project: "workshop-operators"
+      tags: provision_eventing
     - include_role:
         name: provision_streams
       vars:
@@ -39,6 +49,18 @@
         kafka_earth_namespace: "shared-kafka"
         app_earth_namespace: "shared-app"
       tags: user_projects
+    - include_role:
+        name: provision_teiid
+      vars:
+        teiid_project: "teiid"
+      with_sequence: start=1 end={{ usersno }} format=%d
+      tags: provision_teiid
+    - include_role:
+        name: provision_postgres
+      vars:
+        postgres_project: "postgres"
+      with_sequence: start=1 end={{ usersno }} format=%d
+      tags: provision_postgres
     - include_role:
         name: provision_keycloak
       vars:

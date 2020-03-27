@@ -6,7 +6,8 @@
     name: 'user{{ item }}'
     state: present
 
-- name: Evaluate keycloak Subscription
+
+- name: Evaluate teiid Subscription
   k8s:
     state: present
-    resource_definition: "{{ lookup('template', 'keycloak-subscription.yaml.j2') }}"
+    resource_definition: "{{ lookup('template', 'teiid-subscription.yaml.j2') }}"

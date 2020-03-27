@@ -32,3 +32,9 @@
     - { user: 'user{{ item }}', namespace: '{{ db_earth_namespace }}', role: 'pod-exec' }
   loop_control:
     loop_var: item_project
+
+- name: Evaluate user{{ item }} Operator Group
+  k8s:
+    state: present
+    resource_definition: "{{ lookup('template', 'user-operatorgroup.yaml.j2') }}"
+
