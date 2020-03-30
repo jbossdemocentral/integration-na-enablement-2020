@@ -35,6 +35,11 @@
         operators_project: "workshop-operators"
       tags: provision_streams
     - include_role:
+        name: provision_tekton
+      vars:
+        operators_project: "workshop-operators"
+      tags: provision_tekton
+    - include_role:
         name: user_projects
       with_sequence: start=1 end={{ num_users }} format=%d
       tags: user_projects
@@ -60,6 +65,12 @@
         che_project: "keycloak"
       with_sequence: start=1 end={{ num_users }} format=%d
       tags: provision_keycloak
+    - include_role:
+        name: provision_prometheus
+      vars:
+        prometheus_project: "prometheus"
+      with_sequence: start=1 end={{ num_users }} format=%d
+      tags: provision_prometheus
     - include_role:
         name: provision_webapp
       vars:

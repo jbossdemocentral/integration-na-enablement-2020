@@ -1,11 +1,11 @@
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: prometheus
-  namespace: user{{ item }}
+  name: openshift-pipelines-operator
+  namespace: {{ operators_project }}
 spec:
-  channel: beta
+  channel: dev-preview
   installPlanApproval: Automatic
-  name: prometheus
+  name: openshift-pipelines-operator
   source: community-operators
   sourceNamespace: openshift-marketplace
