@@ -90,7 +90,7 @@ metadata:
     strimzi.io/use-connector-resources: "true"
 spec:
   bootstrapServers: 'user-cluster-kafka-bootstrap:9092'
-  image: 'quay.io/hguerreroo/debezium-connect:0.10.0-sqlsrv'
+  image: 'quay.io/hguerreroo/rhi-cdc-connect:2020-Q1'
   replicas: 1
   jvmOptions:
     gcLoggingEnabled: false
@@ -128,7 +128,7 @@ kind: KafkaConnector
 metadata:
   name: orders-connector
   labels:
-    strimzi.io/cluster: user-cluster
+    strimzi.io/cluster: debezium
 spec:
   class: io.debezium.connector.sqlserver.SqlServerConnector
   tasksMax: 1
@@ -163,20 +163,15 @@ Verify that you followed each step in the procedure above. If you are still havi
 It's now time to test the Change Data Capture integration.
 
 - We will first load the CSV data into MSSQL using a PHP app
-- Debezium will populate data from MSSQL into the Earth Kafka topic
+- Debezium will populate data from MSSQL into the Kafka topic
 
 Let's get started!
 
 === Loading Orders File
 
-. Download to your local system the link:https://raw.githubusercontent.com/RedHatWorkshops/dayinthelife-streaming/master/support/module-1/earth-orders.csv[Earth Orders File, window="_blank"].
+. Download to your local system the link:https://raw.githubusercontent.com/RedHatWorkshops/dayinthelife-streaming/master/support/module-1/single-order.csv[Single Order File, window="_blank"].
 
-. Navigate to the legacy PHP link:http://www-{user-username}.{openshift-app-host}/#{user-username}[Enterprise System, window="_blank"] in a new browser tab.
-+
-[IMPORTANT]
-====
-Make sure that /#{user-username} is added at the end of the URL. You won't be able to load the file if your are missing this part.
-====
+. Navigate to the legacy PHP link:http://www-{user-username}.{openshift-app-host}/[Enterprise System, window="_blank"] in a new browser tab.
 +
 image:images/www-main.png[PHP System]
 
@@ -249,11 +244,6 @@ This an alternative way to search for resources in the OpenShift developer conso
 . This will display the topics on the *Earth* _Kafka cluster_. You should be able to locate your `{user-username}-connect-cluster*` as well as the `{user-username}.earth.dbo.orders--*` _KafkaTopics_.
 +
 image::images/openshift-cdc-topics.png[CDC KafkaTopics]
-+
-[TIP]
-====
-You can narrow the results by adding `{user-username}` to the search filter.
-====
 
 [type=verification]
 Were you able to see that your Change Data Capture connector has access to Kafka?
@@ -299,6 +289,36 @@ bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic {user-us
 {"type":"string","optional":true,"field":"change_lsn"},{"type":"string","optional":true,"field":"commit_lsn"}],"optional":false,"name":"io.debezium.connector.sqlserver.Source","field":"source"},{"type":"string","optional":false,"field":"op"},{"type":"int64","optional":true,"field":"ts_ms"}],"optional":false,"name":"user1.earth.dbo.Orders.Envelope"},"payload":{"before":null,"after":{"OrderId":1000,"OrderType":"E","OrderItemName":"Mocha Irish Cream","Quantity":168,"Price":"4.30","ShipmentAddress":"P.O. Box 511, 4483 Ornare Rd.","ZipCode":"C5X 6L8","OrderUser":"user1"},"source":{"version":"0.10.0.Beta2-redhat-00001","connector":"sqlserver","name":"user1.earth","ts_ms":1584993092410,"snapshot":"false","db":"InternationalDB","schema":"dbo","table":"Orders","change_lsn":"00000027:00000038:0002","commit_lsn":"00000027:00000038:0003"},"op":"c","ts_ms":1584993096494}}
 ----
 
+. Copy the string from the terminal.
+
+. Open in a new browser tab `https://jsonformatter.org/json-pretty-print`.
+
+. Paste in the left side and click on Make Pretty so you can check the actual format of the message json payload.
+
+. You will be able to see the `schema` field and the `payload` field.
+
+. Under the _payload_ check you can see there is no `before` value as this was just an *insert*. 
+
+. Type in some `Enter` keystrokes in the Kafka terminal to make space to separate the next record coming to the Topic.
+
+. Now get back to the PHP _Enterprise Application_ where you will now *Edit* the record to produce another change in the database.
+
+. In the main page, click on the *Order* table to get to the edit page.
++
+image::images/enterprise-order-click.png[Click Order]
+
+. You will get to the edit page. Do some changes to the order `quantity` and the `shipping address` information. 
+
+. Click on *< Save >* to make the changes.
++
+image::images/enterprise-order-edit.png[Edit Order]
+
+. You should be able to see the *Success* green message.
++
+image::images/enterprise-order-edit.png[Edit Order]
+
+. Get back to the _Kafka broker_ terminal and check what happened. You should see a new record been received.
+
 [type=verification]
 Were you able to capture the changes in the MSSQL server database and generate Apache Kafka events using Change Data Capture?
 
@@ -307,118 +327,84 @@ Verify that you followed each step in the procedure above. If you are still havi
 
 [time=10]
 [id="enabling-http-access"]
-== Enabling HTTP access to Kafka
+== Using Single Message Transformations (SMT)
 
-Apache Kafka uses a custom protocol on top of TCP/IP for communication between applications and the cluster. There are many client implementations for different programming languages, from Java to Golang, from Python to C# and many more.
+Debezium generates data change events in a form of a complex message structure. Each event consists of three parts:
 
-However, there are scenarios where it is not possible to use the clients, or indeed the native protocol. Communicating with an Apache Kafka cluster using a standard protocol like HTTP/1.1 eases development in these scenarios.
+- metadata, comprising the type of operation, information on the event source, a timestamp, and optionally transaction information
+- the row data before change
+- the row data after change
 
-=== Deploy the HTTP Bridge Proxy
+Debezium provides a single message transformation that crosses the bridge between the complex and simple formats, the ExtractNewRecordState SMT.
 
-. Go back to the OpenShift Developer console and click on *+Add* menu on the left side bar.
-+
-image:images/openshift-mirrormaker-add.png[Add From Topology]
+The SMT provides three main functions. It
 
-. Click on the *From Catalog* option.
-+
-image::images/add-from-catalog.png[OpenShift From Catalog, role="integr8ly-img-responsive"]
+- extracts the after field from change events and replaces the original event just with this part
 
-. Type in `kafka` in the search text field and then click on *Kafka Bridge*.
-+
-image::images/openshift-bridge-catalog.png[OpenShift HTTP Bridge, role="integr8ly-img-responsive"]
+- optionally filters delete and tombstone records, as per the capabilities and requirements of downstream consumers
 
-. Click on *Create* button.
-+
-image::images/openshift-bridge-create.png[OpenShift HTTP Bridge, role="integr8ly-img-responsive"]
+- optionally adds metadata fields from the change event to the outgoing flattened record
 
-. Create a `KafkaBridge` Kubernetes Resource to define your HTTP Bridge proxy. Replace the _YAML_ editor with the following code:
+- optionally add metadata fields to the header
+
+The SMT can be applied either to a source connector (Debezium) or a sink connector.
+
+=== Edit the connector configuration
+
+. Get back to the Search page and look for the `KafkaConnector` resource.
+
+. Select the `orders-connector` and delete it.
+
+. Click on create new KafkaConnector and replace the editor YAML with the following code:
 +
 [source,yaml,subs="attributes+"]
 ----
 apiVersion: kafka.strimzi.io/v1alpha1
-kind: KafkaBridge
+kind: KafkaConnector
 metadata:
-  name: http
+  name: order-connector-smt
+  labels:
+    strimzi.io/cluster: debezium
 spec:
-  bootstrapServers: 'moon-kafka-bootstrap.{user-username}.svc:9092'
-  http:
-    port: 8080
-  replicas: 1
+  class: io.debezium.connector.sqlserver.SqlServerConnector
+  tasksMax: 1
+  config:
+    connector.class: "io.debezium.connector.sqlserver.SqlServerConnector"
+    database.hostname: "mssql-server-linux.{user-username}.svc"
+    database.port: "1433"
+    database.user: "sa"
+    database.password: "Password!"
+    database.dbname: "InternationalDB"
+    database.server.name: "{user-username}.smt"
+    table.whitelist: "dbo.Orders"
+    database.history.kafka.bootstrap.servers: "user-cluster-kafka-bootstrap:9092"
+    database.history.kafka.topic: "{user-username}.db.dbhistory"
+    key.converter: "org.apache.kafka.connect.json.JsonConverter"
+    key.converter.schemas.enable: "false"
+    value.converter: "org.apache.kafka.connect.json.JsonConverter"
+    value.converter.schemas.enable: "false"
+    transforms: "extract"
+    transforms.extract.type: "io.debezium.transforms.ExtractNewRecordState"
+    transforms.extract.add.fields: "op,table"
 ----
 
-. Click on *Create* button.
-+
-image::images/openshift-bridge-details.png[OpenShift Kafka Resource, role="integr8ly-img-responsive"]
-
-. Go back to the topology view by clicking *Topology* in the left side menu
-+
-image:images/openshift-bridge-list.png[Back To Topology]
-
-. Wait for the bridge to start.
-+
-image:images/openshift-bridge-topology.png[Mirror Maker Topology]
-
-. From the CodeReady terminal, expose the bridge HTTP REST API service as a route for external access.
-+
-[source,bash,subs="attributes+"]
-----
-oc expose service http-bridge-service --name kafka-bridge -n {user-username}
-----
-
-=== Test the HTTP Bridge
-
-. Create a consumer to test the connection to your topic. Issue the following command from the terminal:
+. Get back to the `Kafka broker` terminal and run the following command to get the records:
 +
 [source,bash,subs="attributes+"]
 ----
-cat << EOF | curl -X POST http://kafka-bridge-{user-username}.{openshift-app-host}/consumers/{user-username}-http-group -H 'content-type: application/vnd.kafka.v2+json' -d @-
-{
-    "name": "{user-username}",
-    "format": "json",
-    "auto.offset.reset": "earliest",
-    "enable.auto.commit": false,
-    "fetch.min.bytes": 1024,
-    "consumer.request.timeout.ms": 30000
-}
-EOF
+bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic user1.smt.dbo.Orders --from-beginning
 ----
 
-. Notice the return json `base_uri`, it represents the REST resource for your customer.
-+
-[source,bash,subs="attributes+"]
-----
-{"instance_id":"user1","base_uri":"http://kafka-bridge-{user-username}.apps.cluster-eventing-6fbb.eventing-6fbb.example.
-opentlc.com:80/consumers/{user-username}-http-group/instances/{user-username}"}
-----
+. As you can see now, the records are more friendly so we can process them easily in the next steps.
 
-. Use the previous **base_uri** to request subscription to the topics.
-+
-[source,bash,subs="attributes+"]
-----
-curl -X POST http://kafka-bridge-{user-username}.{openshift-app-host}/consumers/{user-username}-http-group/instances/{user-username}/subscription -H 'content-type: application/vnd.kafka.v2+json' -d '{"topics": ["{user-username}.earth.dbo.Orders"]}'
-----
+[time=10]
+[id="sink"]
+== Sending events out of Kafka
 
-. Now you can start to consume some records. Notice that you need to send `json` as the accept type.
-+
-[source,bash,subs="attributes+"]
-----
-curl http://kafka-bridge-{user-username}.{openshift-app-host}/consumers/{user-username}-http-group/instances/{user-username}/records -H 'accept: application/vnd.kafka.json.v2+json'
-----
-+
-[NOTE]
-====
-The first call to the service will return an empty string as it just created the consumer and subscribed to the topic.
-====
 
-. Call the comand again, it will start to retrieve batchs of records. Keep repeating until there is no more records to read.
-+
-[TIP]
-====
-You can take notice of the `offset` returned in the records to know how many messages have been read.
-====
 
 [type=verification]
-Were you able to successfully retrieve CDC data over HTTP?  *Congratulations!* You just finished capturing data from a MSSQL database into Kafka, then replicate that information to a different Kafka cluster. Finally you were able to retrieve the information using an HTTP interface.
+Were you able to ? *Congratulations!* You have successfuly implemented CDC with Red Hat Integration.
 
 [type=verificationFail]
 Verify that you followed each step in the procedure above. If you are still having issues, contact your administrator.

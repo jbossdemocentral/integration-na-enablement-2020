@@ -1,6 +1,6 @@
 ---
 - name: "NA enablement"
-  hosts: localhost
+  hosts: workshop
   become: false
   gather_facts: false
   tags:

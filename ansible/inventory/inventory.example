@@ -1,13 +1,7 @@
-[local:vars]
-ansible_connection=local
-
-[local]
-127.0.0.1
-
 [workshop]
 localhost ansible_connection=local
 
 [workshop:vars]
-num_users=3
+num_users=5
 ocp_username=opentlc-mgr
 silent=false
