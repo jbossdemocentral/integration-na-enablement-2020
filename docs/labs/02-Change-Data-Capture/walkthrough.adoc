@@ -55,6 +55,18 @@ There is already a Kafka deployment running. We will then deploy a KafkaConnect 
 
 === Deploy KafkaConnect CDC Connector
 
+link:https://kafka.apache.org/documentation/#connect[Kafka Connect] is a tool for streaming data between Apache Kafka and external systems. It provides a framework for moving large amounts of data into and out of your Kafka cluster while maintaining scalability and reliability. Kafka Connect is typically used to integrate Kafka with external databases and storage and messaging systems.
+
+AMQ Streams allows you to:
+
+- Create a Kafka Connect image containing the connectors you want
+- Deploy and manage a Kafka Connect cluster running within OpenShift using a KafkaConnect resource
+
+The Cluster Operator can use images that you create to deploy a Kafka Connect cluster to your OpenShift cluster.
+
+A Kafka Connect cluster is implemented as a Deployment with a configurable number of workers.
+
+
 . Go back, or Open a new tab with the OpenShift Developer Console link:{openshift-host}/topology/ns/{user-username}[Topology View, window="_blank"].
 +
 [IMPORTANT]
@@ -78,7 +90,7 @@ image::images/openshift-kafkaconnect.png[OpenShift KafkaConnect, role="integr8ly
 +
 image::images/openshift-create-kafkaconnect.png[OpenShift KafkaConnect, role="integr8ly-img-responsive"]
 
-. Create a `KafkaConnect` Kubernetes Custom Resource to define your connector. Replace the _YAML_ editor with the following code:
+. Create a `KafkaConnect` Kubernetes Custom Resource to define your connector. We have already created a _container image_ with the *Red Hat Integration CDC* connectors for your. Replace the _YAML_ editor with the following code:
 +
 [source,yaml,subs="attributes+"]
 ----
@@ -89,31 +101,43 @@ metadata:
   annotations:
     strimzi.io/use-connector-resources: "true"
 spec:
-  bootstrapServers: 'user-cluster-kafka-bootstrap:9092'
+  bootstrapServers: 'user-kafka-bootstrap:9092'
   image: 'quay.io/hguerreroo/rhi-cdc-connect:2020-Q1'
   replicas: 1
+  resources:
+    requests:
+      memory: 4Gi
+    limits:
+      memory: 4Gi
   jvmOptions:
     gcLoggingEnabled: false
   config:
-    group.id: {user-username}-connect-cluster
-    offset.storage.topic: {user-username}-connect-cluster-offsets
-    config.storage.topic: {user-username}-connect-cluster-configs
-    status.storage.topic: {user-username}-connect-cluster-status
+    group.id: {user-username}-debezium-cluster
+    offset.storage.topic: {user-username}-debezium-cluster-offsets
+    config.storage.topic: {user-username}-debezium-cluster-configs
+    status.storage.topic: {user-username}-debezium-cluster-status
 ----
 
 . Click on *Create* button.
 +
 image::images/openshift-kafkaconnect-detail.png[OpenShift Kafka Resource, role="integr8ly-img-responsive"]
 
-=== Configure KafkaConnect CDC Connector
-
-You are now in the AMQ Streams operator page where you can check the different resources available from the operator.
-
 . Click again in the *KafkaTopic* tab.
 // +
 // image::images/openshift-kafkaconnect-detail.png[OpenShift Kafka Resource, role="integr8ly-img-responsive"]
 
-. You should see the _topics_ created by *Debezium*.
+. You should see the _topics_ created by the *Debezium* Kafka Connect cluster.
+
+=== Configure KafkaConnect CDC Connector
+
+When you have created a container image for your connector plug-in, you need to create a connector instance in your Kafka Connect cluster. You can then configure, monitor, and manage a running connector instance.
+
+AMQ Streams provides two APIs for creating and managing connectors:
+
+- KafkaConnector resources (referred to as KafkaConnectors)
+- Kafka Connect REST API
+
+*KafkaConnectors* allow you to create and manage connector instances for Kafka Connect in an OpenShift-native way, so an HTTP client such as cURL is not required. Like other Kafka resources, you declare a connector’s desired state in a *KafkaConnector* _YAML_ file that is deployed to your OpenShift cluster to create the connector instance.
 
 . Now click on the *Kafka connector* tab. With AMQ Streams we can also configure the Kafka Connect connectors using Kubernetes custom resources.
 
@@ -141,7 +165,7 @@ spec:
     database.dbname: "InternationalDB"
     database.server.name: "{user-username}.db"
     table.whitelist: "dbo.Orders"
-    database.history.kafka.bootstrap.servers: "user-cluster-kafka-bootstrap:9092"
+    database.history.kafka.bootstrap.servers: "user-kafka-bootstrap:9092"
     database.history.kafka.topic: "{user-username}.db.dbhistory"
 ----
 
@@ -160,6 +184,8 @@ Verify that you followed each step in the procedure above. If you are still havi
 [id="loading-earth-orders"]
 == Loading Earth Orders
 
+
+
 It's now time to test the Change Data Capture integration.
 
 - We will first load the CSV data into MSSQL using a PHP app
@@ -168,6 +194,10 @@ It's now time to test the Change Data Capture integration.
 Let's get started!
 
 === Loading Orders File
+
+Debezium’s SQL Server Connector can monitor and record the row-level changes in the schemas of a SQL Server database.
+
+The functionality of the connector is based upon link:https://docs.microsoft.com/en-us/sql/relational-databases/track-changes/about-change-data-capture-sql-server?view=sql-server-2017[change data capture] feature provided by SQL Server Standard (since SQL Server 2016 SP1) or Enterprise edition.
 
 . Download to your local system the link:https://raw.githubusercontent.com/RedHatWorkshops/dayinthelife-streaming/master/support/module-1/single-order.csv[Single Order File, window="_blank"].
 
@@ -203,12 +233,14 @@ image:images/openshift-db-overview.png[Access Pod]
 
 . Now, click on the *Terminal* tab to access the pod's shell.
 +
+--
 image:images/openshift-db-terminal.png[Pod Terminal]
-+
+
 [TIP]
 ====
 If you feel comfortable, you can also use the OpenShift CLI command `oc rsh` to access the database pod as well.
 ====
+--
 
 . Run the following command to access the database:
 +
@@ -241,7 +273,7 @@ This an alternative way to search for resources in the OpenShift developer conso
 ====
 --
 
-. This will display the topics on the *Earth* _Kafka cluster_. You should be able to locate your `{user-username}-connect-cluster*` as well as the `{user-username}.earth.dbo.orders--*` _KafkaTopics_.
+. This will display the topics on the _Kafka cluster_. You should be able to locate your `{user-username}-connect-cluster*` as well as the `{user-username}.earth.dbo.orders--*` _KafkaTopics_.
 +
 image::images/openshift-cdc-topics.png[CDC KafkaTopics]
 
@@ -257,11 +289,11 @@ Time to check what information is flowing into Apache Kafka.
 
 . Go back to the topology view. We will access one of the Kafka brokers.
 
-. Click on the `user-cluster kafka` _stateful set_.
+. Click on the `user kafka` _stateful set_.
 
 . Click on the *Resources* tab.
 
-. Click on the `user-cluster-kafka-0` pod to access the details.
+. Click on the `user-kafka-0` pod to access the details.
 +
 image::images/openshift-kafka-deployment.png[Kafka Pods]
 
@@ -297,9 +329,17 @@ bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic {user-us
 
 . You will be able to see the `schema` field and the `payload` field.
 
-. Under the _payload_ check you can see there is no `before` value as this was just an *insert*. 
+. Under the _payload_ check you can see there is no `before` value as this was just an *insert* operatio. The value should be `null`. 
 
 . Type in some `Enter` keystrokes in the Kafka terminal to make space to separate the next record coming to the Topic.
+
+[type=verification]
+Were you able to see the structure of debezium records?
+
+[type=verificationFail]
+Verify that you followed each step in the procedure above. If you are still having issues, contact your administrator.
+
+=== Issue and update operation
 
 . Now get back to the PHP _Enterprise Application_ where you will now *Edit* the record to produce another change in the database.
 
@@ -319,8 +359,12 @@ image::images/enterprise-order-edit.png[Edit Order]
 
 . Get back to the _Kafka broker_ terminal and check what happened. You should see a new record been received.
 
+. Get back again to the browser tab `https://jsonformatter.org/json-pretty-print`.
+
+. Paste the new record you just received. Check the new structure
+
 [type=verification]
-Were you able to capture the changes in the MSSQL server database and generate Apache Kafka events using Change Data Capture?
+Were you able to check the changes in the structure now with the `before` value?
 
 [type=verificationFail]
 Verify that you followed each step in the procedure above. If you are still having issues, contact your administrator.
@@ -328,6 +372,16 @@ Verify that you followed each step in the procedure above. If you are still havi
 [time=10]
 [id="enabling-http-access"]
 == Using Single Message Transformations (SMT)
+
+Connectors can be configured with transformations to make lightweight message-at-a-time modifications. They can be convenient for data massaging and event routing.
+
+A transformation chain can be specified in the connector configuration.
+
+- `transforms` - List of aliases for the transformation, specifying the order in which the transformations will be applied.
+- `transforms.$alias.type` - Fully qualified class name for the transformation.
+- `transforms.$alias.$transformationSpecificConfig` Configuration properties for the transformation
+
+Single Message Transformations (SMTs) are applied to messages as they flow through Connect. SMTs transform inbound messages after a source connector has produced them, but before they are written to Kafka.
 
 Debezium generates data change events in a form of a complex message structure. Each event consists of three parts:
 
@@ -377,7 +431,7 @@ spec:
     database.dbname: "InternationalDB"
     database.server.name: "{user-username}.smt"
     table.whitelist: "dbo.Orders"
-    database.history.kafka.bootstrap.servers: "user-cluster-kafka-bootstrap:9092"
+    database.history.kafka.bootstrap.servers: "user-kafka-bootstrap:9092"
     database.history.kafka.topic: "{user-username}.db.dbhistory"
     key.converter: "org.apache.kafka.connect.json.JsonConverter"
     key.converter.schemas.enable: "false"
@@ -397,14 +451,116 @@ bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic user1.sm
 
 . As you can see now, the records are more friendly so we can process them easily in the next steps.
 
+[type=verification]
+Were you able to see the new _simple_ format of the message?
+
+[type=verificationFail]
+Verify that you followed each step in the procedure above. If you are still having issues, contact your administrator.
+
 [time=10]
 [id="sink"]
-== Sending events out of Kafka
+== Sending events out of Kafka to ElasticSearch
 
+The Apache Camel community introduced recently a new subproject in the ecosystem: Camel-Kafka-Connector. The main idea behind the project is reusing the Camel Components’ flexibility in a simple way, through a configuration file mixing Kafka Connect configuration and Camel route definitions and options.
 
+Camel Kafka Connector allows you to use all Camel components as Kafka Connect connectors, which as result expands Kafka Connect compatibility to include all Camel components to be used in Kafka ecosystem.
+
+One of the main reasons to generate Kafka events from the Orders MSSQL server database is being able to share the information with other systems. In this case, the order fullfillment team requieres to search the orders to find _business critical_ information. 
+
+=== Create the Apache Camel Kafka Connect cluster
+
+. Go back, or Open a new tab with the OpenShift Developer Console link:{openshift-host}/topology/ns/{user-username}[Topology View, window="_blank"].
+
+. Click *+Add* on the left menu.
++
+image::images/topology-add.png[Topology Add, role="integr8ly-img-responsive"]
+
+. Click on the *From Catalog* option.
++
+image::images/add-from-catalog.png[OpenShift From Catalog, role="integr8ly-img-responsive"]
+
+. Type in `kakfa` in the search text field and then click on *KafkaConnect*.
++
+image::images/openshift-kafkaconnect.png[OpenShift KafkaConnect, role="integr8ly-img-responsive"]
+
+. Click on *Create* button.
++
+image::images/openshift-create-kafkaconnect.png[OpenShift KafkaConnect, role="integr8ly-img-responsive"]
+
+. Create a `KafkaConnect` Kubernetes Custom Resource to define your connector. We have already created a _container image_ with the *Red Hat Integration CDC* connectors for your. Replace the _YAML_ editor with the following code:
++
+[source,yaml,subs="attributes+"]
+----
+apiVersion: kafka.strimzi.io/v1beta1
+kind: KafkaConnect
+metadata:
+  name: camel
+  annotations:
+    strimzi.io/use-connector-resources: "true"
+spec:
+  bootstrapServers: 'user-kafka-bootstrap:9092'
+  image: 'quay.io/hguerreroo/camel-es-kafka-connect'
+  replicas: 1
+  resources:
+    requests:
+      memory: 4Gi
+    limits:
+      memory: 4Gi
+  jvmOptions:
+    gcLoggingEnabled: false
+  config:
+    group.id: {user-username}-camel-cluster
+    offset.storage.topic: {user-username}-camel-cluster-offsets
+    config.storage.topic: {user-username}-camel-cluster-configs
+    status.storage.topic: {user-username}-camel-cluster-status
+----
+
+. Click on *Create* button.
 
 [type=verification]
-Were you able to ? *Congratulations!* You have successfuly implemented CDC with Red Hat Integration.
+Is the connector up and running?
+
+[type=verificationFail]
+Verify that you followed each step in the procedure above. If you are still having issues, contact your administrator.
+
+=== Starting the Apache Camel ElasticSearch connector
+
+. Click again on *+Add*. 
+
+. Click on *From Catalog*.
+
+. Type `kafka` to filter and then click on *KafkaConnector*. 
+
+. Click on the *Create* button.
+
+. Replace the contents of the YAML editor with the following code:
++
+[source,yaml,subs="attributes+"]
+----
+apiVersion: kafka.strimzi.io/v1alpha1
+kind: KafkaConnector
+metadata:
+  name: camel-es-connector
+  labels:
+    strimzi.io/cluster: camel
+spec:
+  class: org.apache.camel.kafkaconnector.CamelSinkConnector
+  tasksMax: 1
+  config:
+    key.converter: org.apache.kafka.connect.storage.StringConverter
+    value.converter: org.apache.kafka.connect.storage.StringConverter
+    camel.sink.url: elasticsearch-rest://elasticsearch?hostAddresses=elasticsearch:9200&operation=Index&indexName=orders
+    topics: {user-username}.smt.dbo.Orders
+----
+
+. Then click the *Create* button to submit the configuration.
+
+. The connector should start processing the orders and inserting them into ElasticSearch for indexing. 
+
+. Open a new browser tab and navigate to the following link:http://elastic-elastic.{openshift-app-host}:9200/user1-orders/_search[ElasticSearch results page].
+
+[type=verification]
+Were you able to see the records? *Congratulations!* You have successfuly implemented CDC with Red Hat Integration.
 
 [type=verificationFail]
 Verify that you followed each step in the procedure above. If you are still having issues, contact your administrator.
