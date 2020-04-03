@@ -77,6 +77,11 @@
         webapp_namespace: "webapp"
         configmap_name: "extra-services"
       tags: provision_webapp
+    - include_role:
+        name: provision_elastic
+      vars:
+        es_namespace: "elastic"
+      tags: provision_elastic
 #    - include_role:
 #        name: provision_che
 #      vars:

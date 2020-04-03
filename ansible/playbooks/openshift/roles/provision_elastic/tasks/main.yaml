@@ -1,0 +1,12 @@
+---
+- name: Evaluate {{ es_namespace }} namespace if not exists 
+  k8s:
+    api_version: v1
+    kind: Namespace
+    name: '{{ es_namespace }}'
+    state: present
+
+- name: Provision ElasticSearch
+  k8s:
+    state: present
+    resource_definition: "{{ lookup('template', 'elasticsearch.yaml.j2') }}"
