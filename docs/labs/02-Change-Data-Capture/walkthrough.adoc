@@ -11,7 +11,7 @@ endif::[]
 [id='change-data-capture']
 = Lab - Change Data Capture
 
-In this lab you will enable Change Data Capture (CDC) for a legacy application that loads the customer orders from a comman separated value (CSV) file. This old PHP application can't be modified so there is no way to modernize it without risks. You will enable CDC on the SQL server database where the orders are stored and create a Kafka Connect deployment using AMQ streams to emit data change events to the Earth Apache Kafka cluster.
+In this lab you will enable Change Data Capture (CDC) for a legacy application that loads the customer orders from a comma separated value (CSV) file. This old PHP application can't be modified so there is no way to modernize it without risks. You will enable CDC on the SQL server database where the orders are stored and create a Kafka Connect deployment using AMQ streams to emit data change events (using Debezium) to the Earth Apache Kafka cluster.
 
 *Audience:* Enterprise Integrators, System Architects, Developers, Data Integrators
 
@@ -26,6 +26,7 @@ Enter Change Data Capture (CDC) and Debezium. By capturing changes from the log 
 To respond to business demands quickly and efficiently, you need a way to integrate applications and data spread across your enterprise. Red Hat® AMQ—based on open source communities like Apache ActiveMQ and Apache Kafka—is a flexible messaging platform that delivers information reliably, enabling real-time integration and connecting the Internet of Things (IoT).
 
 AMQ streams component makes Apache Kafka “OpenShift native” through the use of powerful operators that simplify the deployment, configuration, management, and use of Apache Kafka on OpenShift.
+Part of the Red Hat Integration product, Debezium offers low-latency change data capture for a variety of databases.
 
 *Credentials*
 
@@ -51,7 +52,7 @@ Your password is: `{user-password}`
 [id="configure-cdc-connectors"]
 == Configure CDC connectors for Kafka Connect
 
-There is already a Kafka deployment running. We will then deploy a KafkaConnect CDC connector to connect to that cluster while we extract the data from the SQL Server Database.
+There is already a Kafka deployment running. We will then deploy a Kafka Connect CDC connector to connect to that cluster while we extract the data from the SQL Server database.
 
 === Deploy KafkaConnect CDC Connector
 
@@ -61,6 +62,7 @@ AMQ Streams allows you to:
 
 - Create a Kafka Connect image containing the connectors you want
 - Deploy and manage a Kafka Connect cluster running within OpenShift using a KafkaConnect resource
+- Deploy Kafka Connect connectors like Debezium
 
 The Cluster Operator can use images that you create to deploy a Kafka Connect cluster to your OpenShift cluster.
 
@@ -106,9 +108,9 @@ spec:
   replicas: 1
   resources:
     requests:
-      memory: 4Gi
+      memory: 2Gi
     limits:
-      memory: 4Gi
+      memory: 2Gi
   jvmOptions:
     gcLoggingEnabled: false
   config:
@@ -197,7 +199,7 @@ Let's get started!
 
 Debezium’s SQL Server Connector can monitor and record the row-level changes in the schemas of a SQL Server database.
 
-The functionality of the connector is based upon link:https://docs.microsoft.com/en-us/sql/relational-databases/track-changes/about-change-data-capture-sql-server?view=sql-server-2017[change data capture] feature provided by SQL Server Standard (since SQL Server 2016 SP1) or Enterprise edition.
+The functionality of the connector is based upon the link:https://docs.microsoft.com/en-us/sql/relational-databases/track-changes/about-change-data-capture-sql-server?view=sql-server-2017[change data capture] feature provided by SQL Server Standard (since SQL Server 2016 SP1) or Enterprise edition.
 
 . Download to your local system the link:https://raw.githubusercontent.com/RedHatWorkshops/dayinthelife-streaming/master/support/module-1/single-order.csv[Single Order File, window="_blank"].
 
@@ -209,7 +211,7 @@ image:images/www-main.png[PHP System]
 +
 image:images/www-choose-file.png[Choose File]
 
-. Load the _CSV_ file you just downloaded. Click on *Open* button.
+. Load the _CSV_ file you just downloaded. Click on the *Open* button.
 +
 image:images/www-orders-file.png[Orders File]
 
@@ -223,7 +225,7 @@ image::images/www-imported-orders.png[Imported Orders]
 
 === Check Database Records
 
-After loading the file into the system, the orders data  should be store in the MSSQL Server database. Let's check to make sure that's the case.
+After loading the file into the system, the orders data  should be stored in the MSSQL Server database. Let's check to make sure that's the case.
 
 . Go back to the topology view of the OpenShift Developer console.
 
@@ -329,7 +331,7 @@ bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic {user-us
 
 . You will be able to see the `schema` field and the `payload` field.
 
-. Under the _payload_ check you can see there is no `before` value as this was just an *insert* operatio. The value should be `null`. 
+. Under the _payload_ check you can see there is no `before` value as this was just an *insert* operation. The value should be `null`.
 
 . Type in some `Enter` keystrokes in the Kafka terminal to make space to separate the next record coming to the Topic.
 
@@ -339,7 +341,7 @@ Were you able to see the structure of debezium records?
 [type=verificationFail]
 Verify that you followed each step in the procedure above. If you are still having issues, contact your administrator.
 
-=== Issue and update operation
+=== Issue an update operation
 
 . Now get back to the PHP _Enterprise Application_ where you will now *Edit* the record to produce another change in the database.
 
@@ -357,11 +359,11 @@ image::images/enterprise-order-edit.png[Edit Order]
 +
 image::images/enterprise-order-edit.png[Edit Order]
 
-. Get back to the _Kafka broker_ terminal and check what happened. You should see a new record been received.
+. Get back to the _Kafka broker_ terminal and check what happened. You should see a new record has been received.
 
 . Get back again to the browser tab `https://jsonformatter.org/json-pretty-print`.
 
-. Paste the new record you just received. Check the new structure
+. Paste the new record you just received. Check the new structure.
 
 [type=verification]
 Were you able to check the changes in the structure now with the `before` value?
@@ -379,9 +381,10 @@ A transformation chain can be specified in the connector configuration.
 
 - `transforms` - List of aliases for the transformation, specifying the order in which the transformations will be applied.
 - `transforms.$alias.type` - Fully qualified class name for the transformation.
-- `transforms.$alias.$transformationSpecificConfig` Configuration properties for the transformation
+- `transforms.$alias.$transformationSpecificConfig` - Configuration properties for the transformation
 
 Single Message Transformations (SMTs) are applied to messages as they flow through Connect. SMTs transform inbound messages after a source connector has produced them, but before they are written to Kafka.
+Alternatively, they can be applied to outbound messages, before a sink connector consumes them.
 
 Debezium generates data change events in a form of a complex message structure. Each event consists of three parts:
 
@@ -389,7 +392,7 @@ Debezium generates data change events in a form of a complex message structure. 
 - the row data before change
 - the row data after change
 
-Debezium provides a single message transformation that crosses the bridge between the complex and simple formats, the ExtractNewRecordState SMT.
+Debezium provides a single message transformation that crosses the bridge between the complex and simple formats, the `ExtractNewRecordState` SMT.
 
 The SMT provides three main functions. It
 
@@ -399,7 +402,7 @@ The SMT provides three main functions. It
 
 - optionally adds metadata fields from the change event to the outgoing flattened record
 
-- optionally add metadata fields to the header
+- optionally adds metadata fields to the record headers
 
 The SMT can be applied either to a source connector (Debezium) or a sink connector.
 
@@ -459,17 +462,17 @@ Verify that you followed each step in the procedure above. If you are still havi
 
 [time=10]
 [id="sink"]
-== Sending events out of Kafka to ElasticSearch
+== Sending events out of Kafka to Elasticsearch
 
-The Apache Camel community introduced recently a new subproject in the ecosystem: Camel-Kafka-Connector. The main idea behind the project is reusing the Camel Components’ flexibility in a simple way, through a configuration file mixing Kafka Connect configuration and Camel route definitions and options.
+The Apache Camel community introduced recently a new subproject in the ecosystem: Camel-Kafka-Connector. The main idea behind the project is reusing the Camel components’ flexibility in a simple way, through a configuration file mixing Kafka Connect configuration and Camel route definitions and options.
 
 Camel Kafka Connector allows you to use all Camel components as Kafka Connect connectors, which as result expands Kafka Connect compatibility to include all Camel components to be used in Kafka ecosystem.
 
-One of the main reasons to generate Kafka events from the Orders MSSQL server database is being able to share the information with other systems. In this case, the order fullfillment team requieres to search the orders to find _business critical_ information. 
+One of the main reasons to generate Kafka events from the Orders MSSQL server database is being able to share the information with other systems. In this case, the order fullfillment team requires to search the orders to find _business critical_ information. 
 
 === Create the Apache Camel Kafka Connect cluster
 
-. Go back, or Open a new tab with the OpenShift Developer Console link:{openshift-host}/topology/ns/{user-username}[Topology View, window="_blank"].
+. Go back, or open a new tab with the OpenShift Developer Console link:{openshift-host}/topology/ns/{user-username}[Topology View, window="_blank"].
 
 . Click *+Add* on the left menu.
 +
@@ -573,11 +576,10 @@ In this lab you used Debezium CDC connectors to react to change events from SQL 
 
 Open source connectors enable integrations with your local systems landscape. Explore Kafka, Camel, and Debezium connectors to connect APIs and services for event-driven application architectures (EDA). Red Hat offers supported versions of these connectors via AMQ Streams and Fuse.
 
-You can now proceed to link:{next-lab-url}[Lab 3].
-
 [time=4]
 [id="further-reading"]
 == Notes and Further Reading
 
 * https://www.redhat.com/en/technologies/jboss-middleware/amq[Red Hat AMQ]
 * https://developers.redhat.com/topics/event-driven/connectors/[Camel & Debezium Connectors]
+* https://debezium.io/[The upstream Debezium project]
