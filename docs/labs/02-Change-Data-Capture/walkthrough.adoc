@@ -141,9 +141,13 @@ AMQ Streams provides two APIs for creating and managing connectors:
 
 *KafkaConnectors* allow you to create and manage connector instances for Kafka Connect in an OpenShift-native way, so an HTTP client such as cURL is not required. Like other Kafka resources, you declare a connector’s desired state in a *KafkaConnector* _YAML_ file that is deployed to your OpenShift cluster to create the connector instance.
 
-. Now click on the *Kafka connector* tab. With AMQ Streams we can also configure the Kafka Connect connectors using Kubernetes custom resources.
+. Click *+Add* on the left menu.
 
-. Click on the *Create Kafka Connector* button.
+. Click on the *From Catalog* option.
+
+. Type in `kafka` in the search text field and then click on *Kafka connector*.
+
+. Click on *Create* button.
 
 . Replace the contents of the YAML editor with the following code:
 +
@@ -173,7 +177,7 @@ spec:
 
 . Then click the *Create* button to submit the configuration.
 
-. In the operator page, change to the *Kafka Topic* back again. You should see now the `user1.db.dbhistory` _topic_ being created.
+. In the operator page, change to the *Kafka Topic* back again. You should see now the `{user-username}.db.dbhistory` _topic_ being created.
 
 . Get back to the Topology view and check the log in the *debezium-cluster* deployment. 
 
@@ -449,7 +453,7 @@ spec:
 +
 [source,bash,subs="attributes+"]
 ----
-bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic user1.smt.dbo.Orders --from-beginning
+bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic {user-username}.smt.dbo.Orders --from-beginning
 ----
 
 . As you can see now, the records are more friendly so we can process them easily in the next steps.
@@ -506,9 +510,9 @@ spec:
   replicas: 1
   resources:
     requests:
-      memory: 4Gi
+      memory: 2Gi
     limits:
-      memory: 4Gi
+      memory: 2Gi
   jvmOptions:
     gcLoggingEnabled: false
   config:
@@ -521,12 +525,12 @@ spec:
 . Click on *Create* button.
 
 [type=verification]
-Is the connector up and running?
+Is this Kafka Connect instance up and running?
 
 [type=verificationFail]
 Verify that you followed each step in the procedure above. If you are still having issues, contact your administrator.
 
-=== Starting the Apache Camel ElasticSearch connector
+=== Starting the Apache Camel Elasticsearch connector
 
 . Click again on *+Add*. 
 
@@ -552,7 +556,7 @@ spec:
   config:
     key.converter: org.apache.kafka.connect.storage.StringConverter
     value.converter: org.apache.kafka.connect.storage.StringConverter
-    camel.sink.url: elasticsearch-rest://elasticsearch?hostAddresses=elasticsearch.elastic.svc:9200&operation=Index&indexName=orders
+    camel.sink.url: elasticsearch-rest://elasticsearch?hostAddresses=elasticsearch.elastic.svc:9200&operation=Index&indexName={user-username}-orders
     topics: {user-username}.smt.dbo.Orders
 ----
 
@@ -560,7 +564,7 @@ spec:
 
 . The connector should start processing the orders and inserting them into ElasticSearch for indexing. 
 
-. Open a new browser tab and navigate to the following link:http://elastic-elastic.{openshift-app-host}/{user-username}-orders/_search[ElasticSearch results page].
+. Open a new browser tab and navigate to the following link:http://elastic-elastic.{openshift-app-host}/{user-username}-orders/_search[Elasticsearch results page].
 
 [type=verification]
 Were you able to see the records? *Congratulations!* You have successfuly implemented CDC with Red Hat Integration.
