@@ -84,7 +84,7 @@ image::images/topology-add.png[Topology Add, role="integr8ly-img-responsive"]
 +
 image::images/add-from-catalog.png[OpenShift From Catalog, role="integr8ly-img-responsive"]
 
-. Type in `kakfa` in the search text field and then click on *KafkaConnect*.
+. Type in `kafka` in the search text field and then click on *KafkaConnect*.
 +
 image::images/openshift-kafkaconnect.png[OpenShift KafkaConnect, role="integr8ly-img-responsive"]
 
@@ -305,7 +305,7 @@ image::images/openshift-kafka-terminal.png[Kafka Pods]
 +
 [IMPORTANT]
 ====
-Red Hat provides its own complete Apache Kakfa distribution container images. We will use the `kafka-console-consumer.sh` script to query the topics.
+Red Hat provides its own complete Apache Kafka distribution container images. We will use the `kafka-console-consumer.sh` script to query the topics.
 ====
 
 . Issue the following command to read *all* the events in the `orders` topic:
@@ -482,7 +482,7 @@ image::images/topology-add.png[Topology Add, role="integr8ly-img-responsive"]
 +
 image::images/add-from-catalog.png[OpenShift From Catalog, role="integr8ly-img-responsive"]
 
-. Type in `kakfa` in the search text field and then click on *KafkaConnect*.
+. Type in `kafka` in the search text field and then click on *KafkaConnect*.
 +
 image::images/openshift-kafkaconnect.png[OpenShift KafkaConnect, role="integr8ly-img-responsive"]
 
