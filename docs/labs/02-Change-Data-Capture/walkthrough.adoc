@@ -549,7 +549,7 @@ spec:
   config:
     key.converter: org.apache.kafka.connect.storage.StringConverter
     value.converter: org.apache.kafka.connect.storage.StringConverter
-    camel.sink.url: elasticsearch-rest://elasticsearch?hostAddresses=elasticsearch:9200&operation=Index&indexName=orders
+    camel.sink.url: elasticsearch-rest://elasticsearch?hostAddresses=elasticsearch.elastic.svc:9200&operation=Index&indexName=orders
     topics: {user-username}.smt.dbo.Orders
 ----
 
@@ -557,7 +557,7 @@ spec:
 
 . The connector should start processing the orders and inserting them into ElasticSearch for indexing. 
 
-. Open a new browser tab and navigate to the following link:http://elastic-elastic.{openshift-app-host}:9200/user1-orders/_search[ElasticSearch results page].
+. Open a new browser tab and navigate to the following link:http://elastic-elastic.{openshift-app-host}/{user-username}-orders/_search[ElasticSearch results page].
 
 [type=verification]
 Were you able to see the records? *Congratulations!* You have successfuly implemented CDC with Red Hat Integration.
