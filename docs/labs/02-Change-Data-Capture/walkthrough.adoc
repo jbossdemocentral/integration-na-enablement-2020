@@ -141,9 +141,13 @@ AMQ Streams provides two APIs for creating and managing connectors:
 
 *KafkaConnectors* allow you to create and manage connector instances for Kafka Connect in an OpenShift-native way, so an HTTP client such as cURL is not required. Like other Kafka resources, you declare a connector’s desired state in a *KafkaConnector* _YAML_ file that is deployed to your OpenShift cluster to create the connector instance.
 
-. Now click on the *Kafka connector* tab. With AMQ Streams we can also configure the Kafka Connect connectors using Kubernetes custom resources.
+. Click *+Add* on the left menu.
 
-. Click on the *Create Kafka Connector* button.
+. Click on the *From Catalog* option.
+
+. Type in `kafka` in the search text field and then click on *Kafka connector*.
+
+. Click on *Create* button.
 
 . Replace the contents of the YAML editor with the following code:
 +
