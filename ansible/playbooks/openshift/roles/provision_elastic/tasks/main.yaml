@@ -6,6 +6,9 @@
     name: '{{ es_namespace }}'
     state: present
 
+- name: Enable anyuid on Namespace user{{ item }}
+  shell: "oc adm policy add-scc-to-user anyuid -z default -n {{ es_namespace }}"
+
 - name: Provision ElasticSearch
   k8s:
     state: present
