@@ -1,14 +1,14 @@
 ---
-- name: Create Kafka Cluster
+- name: Create Kafka Cluster for user{{ item }}
   k8s:
     state: present
     namespace: 'user{{ item }}'
     resource_definition: "{{ lookup('template', 'kafka-earth.yaml.j2') }}"
 
-- name: Enable anyuid on Namespace
+- name: Enable anyuid on Namespace user{{ item }}
   shell: "oc adm policy add-scc-to-user anyuid -z default -n user{{ item }}"
 
-- name: Check if DB has been deployed
+- name: Check if DB has been deployed to user{{ item }}
   k8s_facts:
     kind: DeploymentConfig
     name: mssql-server-linux
@@ -16,10 +16,11 @@
     api_version: v1
   register: db_exists
 
-- name: Deploy DB
+- name: Deploy DB user{{ item }}
   block:
   - name: Deploy Earth Database
     shell: "oc new-app {{ mssqlserver_image }}:{{ mssqlserver_version }} \
+            -l 'app.openshift.io/runtime=mssql' -l 'app.kubernetes.io/part-of=enterprise-app' \
             -e 'ACCEPT_EULA=Y' -e 'SA_PASSWORD=Password!' \
             -e 'MSSQL_PID=Standard' -e 'MSSQL_AGENT_ENABLED=true' \
             --name mssql-server-linux -n user{{ item }}"
@@ -39,7 +40,7 @@
             -U sa -P Password! -i /opt/workshop/earth-data.sql"
   when: (db_exists.resources is undefined) or (db_exists.resources | length == 0)
 
-- name: Check if App has been deployed
+- name: Check if App has been deployed in user{{ item }}
   k8s_facts:
     kind: DeploymentConfig
     name: my-apache-php-app
@@ -47,10 +48,11 @@
     api_version: v1
   register: app_exists
 
-- name: Deploy Application
+- name: Deploy Application for user{{ item }}
   block:
   - name: Deploy Earth Application
     shell: "oc new-app quay.io/hguerreroo/my-apache-php-app:latest \
+            -l 'app.openshift.io/runtime=php' -l 'app.kubernetes.io/part-of=enterprise-app' \
             -e 'SERVER_NAME=mssql-server-linux.user{{ item }}.svc' \
             -e 'USER=user{{ item }}' -n user{{ item }}"
   - name: Create Earth Application Route
