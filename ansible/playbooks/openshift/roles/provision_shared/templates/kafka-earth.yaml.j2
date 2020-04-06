@@ -22,17 +22,17 @@ spec:
       '-Xms': 1024m
       '-Xmx': 1024m
       gcLoggingEnabled: false
-    resources:
-      limits:
-        memory: 1Gi
-      requests:
-        memory: 1Gi
   zookeeper:
     replicas: {{ num_zk_nodes }}
     storage:
       type: ephemeral
     jvmOptions:
       gcLoggingEnabled: false
+    resources:
+      limits:
+        memory: 1Gi
+      requests:
+        memory: 1Gi
   entityOperator:
     topicOperator:
       jvmOptions:
