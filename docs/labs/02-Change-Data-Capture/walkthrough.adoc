@@ -130,6 +130,12 @@ image::images/openshift-kafkaconnect-detail.png[OpenShift Kafka Resource, role="
 
 . You should see the _topics_ created by the *Debezium* Kafka Connect cluster.
 
+[type=verification]
+Were you able to check that the topics were created?
+
+[type=verificationFail]
+Verify that you followed each step in the procedure above. If you are still having issues, contact your administrator.
+
 === Configure KafkaConnect CDC Connector
 
 When you have created a container image for your connector plug-in, you need to create a connector instance in your Kafka Connect cluster. You can then configure, monitor, and manage a running connector instance.
@@ -183,14 +189,14 @@ spec:
 
 [type=verification]
 Did the connector started correctly and is now reading the database transaction log?
+
 [type=verificationFail]
 Verify that you followed each step in the procedure above. If you are still having issues, contact your administrator.
 
 [time=10]
 [id="loading-earth-orders"]
+
 == Loading Earth Orders
-
-
 
 It's now time to test the Change Data Capture integration.
 
@@ -198,6 +204,34 @@ It's now time to test the Change Data Capture integration.
 - Debezium will populate data from MSSQL into the Kafka topic
 
 Let's get started!
+
+=== Prepare the database
+
+Before using the SQL Server connector to monitor the changes committed on SQL Server, first you need to enable CDC on a monitored database. 
+
+. Go to the topology view
+
+. Select the database deployment
+
+. Go to the pod
+
+. Access the pod terminal
+
+. Issue the followin comand on the database:
++
+[source,bash,subs="attributes+"]
+----
+/opt/mssql-tools/bin/sqlcmd -S mssql-server-linux -U sa -P Password! -i /opt/workshop/earth-data.sql
+----
+
+[type=verification]
+Did the script run sucessfully?
+
+[type=verificationFail]
+Verify that you followed each step in the procedure above. If you are still having issues, contact your administrator.
+
+[time=10]
+[id="loading-earth-orders"]
 
 === Loading Orders File
 
@@ -226,6 +260,12 @@ image:images/www-load-file.png[Load File]
 .  Wait a few seconds for the information to load. If this is successfully completed, you will see the CSV data on the *Imported Orders* page.
 +
 image::images/www-imported-orders.png[Imported Orders]
+
+[type=verification]
+Were you able to get the orders list screen?
+
+[type=verificationFail]
+Verify that you followed each step in the procedure above. If you are still having issues, contact your administrator.
 
 === Check Database Records
 
@@ -258,6 +298,12 @@ If you feel comfortable, you can also use the OpenShift CLI command `oc rsh` to 
 . Check the results, should look like this:
 +
 image::images/openshift-sqlcommand.png[Query]
+
+[type=verification]
+Is there a record in the database?
+
+[type=verificationFail]
+Verify that you followed each step in the procedure above. If you are still having issues, contact your administrator.
 
 === Check Apache Kafka Records
 
