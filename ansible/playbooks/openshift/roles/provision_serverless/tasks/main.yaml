@@ -25,7 +25,7 @@
     name: knativeservings.serving.knative.dev
   register: crd_serving
   until: crd_serving.resources | list | length == 1
-  retries: 10
+  retries: 100
   delay: 30
 
 - name: Create Serverless Serving
