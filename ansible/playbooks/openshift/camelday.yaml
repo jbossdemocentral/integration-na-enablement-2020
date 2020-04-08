@@ -1,5 +1,5 @@
 ---
-- name: "NA enablement Day one"
+- name: "NA enablement - Day Three Camel K setup"
   hosts: workshop
   become: false
   gather_facts: false
@@ -15,41 +15,49 @@
       set_fact:
         ansible_python_interpreter: "/opt/virtualenvs/k8s/bin/python"
     - include_role:
+        name: camel_projects
+      with_sequence: start=1 end={{ num_users }} format=%d
+      tags: camel_projects
+    - include_role:
+        name: provision_camelk
+      tags: provision_camelk
+    - include_role:
+        name: provision_serverless
+      vars:
+        operators_project: "workshop-operators"
+      tags: provision_serverless
+    - include_role:
+        name: provision_eventing
+      vars:
+        operators_project: "workshop-operators"
+      tags: provision_eventing
+    - include_role:
         name: provision_streams
       vars:
         operators_project: "workshop-operators"
       tags: provision_streams
     - include_role:
-        name: user_projects
-      with_sequence: start=1 end={{ num_users }} format=%d
-      tags: user_projects
-    - include_role:
-        name: provision_shared
-      with_sequence: start=1 end={{ num_users }} format=%d
-      tags: provision_workload
-    - include_role:
-        name: provision_teiid
+        name: provision_jaeger
       vars:
-        teiid_project: "teiid"
+        operators_project: "workshop-operators"
+      tags: provision_jaeger
+    - include_role:
+        name: provision_tekton
+      vars:
+        operators_project: "workshop-operators"
+      tags: provision_tekton
+    - include_role:
+        name: provision_amqbroker
       with_sequence: start=1 end={{ num_users }} format=%d
-      tags: provision_teiid
+      tags: provision_amqbroker
     - include_role:
-        name: provision_keycloak
-      vars:
-        che_project: "keycloak"
+        name: provision_teiid_camel
       with_sequence: start=1 end={{ num_users }} format=%d
-      tags: provision_keycloak
+      tags: provision_teiid_camel
     - include_role:
-        name: provision_webapp
-      vars:
-        webapp_namespace: "webapp"
-        configmap_name: "extra-services"
-      tags: provision_webapp
-    - include_role:
-        name: provision_elastic
-      vars:
-        es_namespace: "elastic"
-      tags: provision_elastic
+        name: provision_prometheus
+      with_sequence: start=1 end={{ num_users }} format=%d
+      tags: provision_prometheus
     - name: extract route_subdomain
       k8s_facts:
         kind: Ingress
@@ -58,12 +66,7 @@
       debug:
         msg:
         - "user.info: "
-        - "user.info: Integration NA Enablement 2020 - Installed for {{ num_users }} user(s)"
-        - "user.info: "
-        - "user.info: Solution Explorer: "
-        - "user.info: https://tutorial-web-app-webapp.{{ route_subdomain_r.resources[0].spec.domain | trim }}"
-        - "user.info: You should share this URL (or a shortlink for it) -- It is all they will need to get started!"
-        - "user.info: "
+        - "user.info: Integration NA Enablement Day Three Camel 2020 - Installed for {{ num_users }} user(s)"
         - "user.info: OpenShift Console: https://console-openshift-console.{{ route_subdomain_r.resources[0].spec.domain | trim }}"
         - "user.info: Cluster admin login with '{{ ocp_username }}' / 'r3dh4t1!'"
       when: not silent|bool

@@ -1,0 +1,15 @@
+---
+- name: Evaluate Camel K Subscription in user{{ item }} projects
+  k8s:
+    state: present
+    resource_definition: "{{ lookup('template', 'camelk-subscription.yaml.j2') }}"
+  loop:
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-lab-basic' }
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-lab-api' }
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-lab-streaming' }
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-lab-vdb' }
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-lab-prometheus' }
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-lab-jaeger' }
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-lab-tekton' }
+  loop_control:
+    loop_var: item_project

@@ -1,0 +1,57 @@
+---
+- name: Process user namespace
+  k8s:
+    api_version: v1
+    kind: Namespace
+    name: user{{ item }}-{{ camel_lab }}
+    state: present
+  loop:
+     - lab-basic
+     - lab-api
+     - lab-streaming
+     - lab-vdb
+     - lab-prometheus
+     - lab-jaeger
+     - lab-tekton
+  loop_control:
+    loop_var: camel_lab
+
+- name: Give user{{ item }} access to projects
+  k8s:
+    state: present
+    resource_definition: "{{ lookup('template', 'user-rolebinding.yaml.j2') }}"
+  loop:
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-lab-basic', role: 'admin' }
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-lab-api', role: 'admin' }
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-lab-streaming', role: 'admin' }
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-lab-vdb', role: 'admin' }
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-lab-prometheus', role: 'admin' }
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-lab-jaeger', role: 'admin' }
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-lab-tekton', role: 'admin' }
+  loop_control:
+    loop_var: item_project
+
+
+- name: Evaluate user{{ item }} Operator Group
+  k8s:
+    state: present
+    resource_definition: "{{ lookup('template', 'user-operatorgroup.yaml.j2') }}"
+  loop:
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-lab-basic' }
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-lab-api' }
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-lab-streaming' }
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-lab-vdb' }
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-lab-prometheus' }
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-lab-jaeger' }
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-lab-tekton' }
+  loop_control:
+    loop_var: item_project
+  
+- name: Give Camel K Pipeline access to projects
+  k8s:
+    state: present
+    resource_definition: "{{ lookup('template', 'pipeline-permission.yaml.j2') }}"
+  loop:
+    - { user: 'user{{ item }}', namespace: 'user{{ item }}-lab-tekton' }
+  loop_control:
+    loop_var: item_project

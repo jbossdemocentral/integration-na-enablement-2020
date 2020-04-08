@@ -1,0 +1,13 @@
+---
+- name: Evaluate user{{ item }} namespace if not exists 
+  k8s:
+    api_version: v1
+    kind: Namespace
+    name: user{{ item }}-lab-vdb
+    state: present
+
+
+- name: Evaluate teiid Subscription
+  k8s:
+    state: present
+    resource_definition: "{{ lookup('template', 'teiid-subscription.yaml.j2') }}"
