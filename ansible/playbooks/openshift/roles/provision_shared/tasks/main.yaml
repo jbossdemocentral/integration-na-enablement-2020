@@ -20,7 +20,7 @@
   block:
   - name: Deploy Earth Database
     shell: "oc new-app {{ mssqlserver_image }}:{{ mssqlserver_version }} \
-            -l 'app.openshift.io/runtime=mssql' -l 'app.kubernetes.io/part-of=enterprise-app' \
+            -l 'app.openshift.io/runtime=mssql,app.kubernetes.io/part-of=enterprise-app' \
             -e 'ACCEPT_EULA=Y' -e 'SA_PASSWORD=Password!' \
             -e 'MSSQL_PID=Standard' -e 'MSSQL_AGENT_ENABLED=true' \
             --name mssql-server-linux -n user{{ item }}"
@@ -52,7 +52,7 @@
   block:
   - name: Deploy Earth Application
     shell: "oc new-app quay.io/hguerreroo/my-apache-php-app:latest \
-            -l 'app.openshift.io/runtime=php' -l 'app.kubernetes.io/part-of=enterprise-app' \
+            -l 'app.openshift.io/runtime=php,app.kubernetes.io/part-of=enterprise-app' \
             -e 'SERVER_NAME=mssql-server-linux.user{{ item }}.svc' \
             -e 'USER=user{{ item }}' -n user{{ item }}"
   - name: Create Earth Application Route
