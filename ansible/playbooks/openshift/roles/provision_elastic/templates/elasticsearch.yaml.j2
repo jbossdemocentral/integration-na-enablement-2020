@@ -96,15 +96,6 @@ items:
         terminationGracePeriodSeconds: 30
     test: false
     triggers:
-    - imageChangeParams:
-        automatic: true
-        containerNames:
-        - elasticsearch
-        from:
-          kind: ImageStreamTag
-          name: elasticsearch:7.3.0
-          namespace: user1-shared-475f
-      type: ImageChange
     - type: ConfigChange
 - apiVersion: route.openshift.io/v1
   kind: Route
